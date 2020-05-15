@@ -20,8 +20,8 @@ public class KakaoBasketExample {
 
 
         basketFlux.concatMap(basket -> {
+            Mono<List<String>> distinctFruits = Flux.fromIterable(basket).distinct().collectList();
 
-             Flux.fromIterable(basket).distinct().collectList();
             distinctFruits.subscribe(val -> System.out.println(val.toString()));
             //System.out.println(basket.toString());
             return distinctFruits;
