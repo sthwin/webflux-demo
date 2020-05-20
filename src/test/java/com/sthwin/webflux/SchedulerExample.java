@@ -5,6 +5,8 @@ import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
 /**
+ * 스케줄러 실행 순서 확인 예제
+ * <p>
  * Created by sthwin on 2020/05/17 10:04 오후
  */
 public class SchedulerExample {
@@ -36,13 +38,13 @@ public class SchedulerExample {
                 .subscribe(val -> System.out.println(String.format("Subscribe - (%s), Thread: %s", val, Thread.currentThread().getName())));
     }
 
-    public static void test1() {
-        Flux.range(1, 5)
+    public static void test1() throws Exception {
+        Flux.range(1, 2)
                 .map(i -> {
                     System.out.println(String.format("Outer First map - (%s), Thread: %s", i, Thread.currentThread().getName()));
                     return i;
                 })
-                .subscribeOn(schedulerA)
+                .subscribeOn(schedulerB)
                 .publishOn(schedulerC)
                 .concatMap(i -> {
                     System.out.println(String.format("Outer Second map - (%s), Thread: %s", i, Thread.currentThread().getName()));
@@ -53,12 +55,17 @@ public class SchedulerExample {
                                 System.out.println(String.format("First map - (%s.%s), Thread: %s", i, j, Thread.currentThread().getName()));
                                 return j;
                             })
-                            .subscribeOn(schedulerB)
+                            //.subscribeOn(schedulerB)
                             .map(j -> {
                                 System.out.println(String.format("Second map - (%s.%s), Thread: %s", i, j, Thread.currentThread().getName()));
                                 return "value " + j;
                             });
                 })
-                .blockLast();
+                .subscribeOn(schedulerA)
+                .subscribe(val -> {
+                    System.out.println("Subscribe-" + Thread.currentThread().getName());
+                });
+
+        Thread.sleep(2000);
     }
 }
