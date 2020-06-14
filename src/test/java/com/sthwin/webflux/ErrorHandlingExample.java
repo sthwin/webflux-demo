@@ -3,6 +3,7 @@ package com.sthwin.webflux;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.SignalType;
+import reactor.util.retry.Retry;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -13,6 +14,22 @@ import java.util.concurrent.atomic.LongAdder;
  */
 public class ErrorHandlingExample {
     public static void main(String[] args) {
+        testRetryWhen();
+        //testRetry();
+    }
+
+    public static void testRetryWhen() {
+        Flux<String> flux = Flux
+                .<String>error(new IllegalArgumentException())
+                .doOnError(err -> System.out.println("doOnError ->" + err))
+                // companion 은 Flux<RetrySignal> 이다.
+                .retryWhen(Retry.from(companion -> {
+                    System.out.println("companion ->" + companion.toString());
+                    return companion.take(3);
+                    //return companion;
+                }));
+
+        flux.subscribe(val -> System.out.println("sub ->" + val));
         testFluxError();
     }
 
@@ -26,7 +43,7 @@ public class ErrorHandlingExample {
                 })
                 .retry(1)
                 .subscribe(val -> {
-                        System.out.println(val);
+                    System.out.println(val);
                 });
 
         try {
@@ -114,5 +131,23 @@ public class ErrorHandlingExample {
 
     public static String doSomethingDangerous(int i) {
         return "100 / " + i + " = " + (100 / i);
+    }
+
+    public static void testRetry() {
+        Flux.interval(Duration.ofMillis(250))
+                .map(input -> {
+                    if (input < 3) return "tick " + input;
+                    throw new RuntimeException("boom");
+                })
+                .doOnError(System.out::println)
+                .retry(1)
+                .elapsed()
+                .subscribe(System.out::println, System.err::println);
+
+        try {
+            Thread.sleep(2100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }
