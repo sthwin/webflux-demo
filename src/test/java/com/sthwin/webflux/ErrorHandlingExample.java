@@ -7,15 +7,48 @@ import reactor.util.retry.Retry;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Created by sthwin on 2020/05/30 7:29 오후
  */
 public class ErrorHandlingExample {
     public static void main(String[] args) {
-        testRetryWhen();
-        //testRetry();
+        testRuntimeException();
+
+        
+    }
+
+    public static void testRuntimeException() {
+        Flux.just("foo")
+                .map(s -> { throw new IllegalArgumentException(s); })
+                .subscribe(v -> System.out.println("GOT VALUE"),
+                        e -> System.out.println("ERROR: " + e));
+    }
+
+    public static void testRetryWhen_2() {
+        AtomicInteger errorCount = new AtomicInteger();
+        AtomicInteger transientHelper = new AtomicInteger();
+        Flux<Integer> transientFlux = Flux.<Integer>generate(sink -> {
+            int i = transientHelper.getAndIncrement();
+            if (i == 10) {
+                sink.next(i);
+                sink.complete();
+            } else if (i % 3 == 0) {
+                sink.next(i);
+            } else {
+                sink.error(new IllegalStateException("Transient error at " + i));
+            }
+        })
+                .doOnError(e -> errorCount.incrementAndGet());
+
+        transientFlux.retryWhen(Retry.max(2).transientErrors(true))
+                .blockLast();
+        assertThat(errorCount).hasValue(6);
+        System.out.println("errorCount: " + errorCount);
     }
 
     public static void testRetryWhen() {
