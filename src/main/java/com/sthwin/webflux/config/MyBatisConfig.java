@@ -26,7 +26,7 @@ public class MyBatisConfig {
     @Bean
     public DataSource dataSource() {
         return DataSourceBuilder.create()
-                .url("jdbc:postgresql://localhost:5432/testdb")
+                .url("jdbc:postgresql://127.0.0.1:5432/testdb")
                 .driverClassName("org.postgresql.Driver")
                 .username("testuser")
                 .password("testpwd")

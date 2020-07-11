@@ -22,9 +22,17 @@ public class ErrorHandlingExample {
         
     }
 
+    /**
+     * exception 을 throw 하든, Flux.error 을 반환하든 시퀀스는 도중에 종료되 버린다.
+     */
     public static void testRuntimeException() {
-        Flux.just("foo")
-                .map(s -> { throw new IllegalArgumentException(s); })
+
+        String defaultString = "default";
+
+        Flux.just("foo", "just")
+                //.map(s -> { throw new IllegalArgumentException(s); })
+                .flatMap(s -> Flux.error(new IllegalArgumentException(s)))
+                .defaultIfEmpty(defaultString)
                 .subscribe(v -> System.out.println("GOT VALUE"),
                         e -> System.out.println("ERROR: " + e));
     }
