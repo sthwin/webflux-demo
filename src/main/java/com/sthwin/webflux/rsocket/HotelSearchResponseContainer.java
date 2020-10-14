@@ -1,22 +1,37 @@
 package com.sthwin.webflux.rsocket;
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Created by sthwin on 2020/10/11 5:44 오후
  */
 
-@Getter
-@Setter
-@Builder
-@NoArgsConstructor
-public class HotelSearchResponseContainer {
-    List<HotelSearchResponse> resList;
 
+public class HotelSearchResponseContainer {
+
+    List<HotelSearchResponse> hotelSearchResponseList = null;
     boolean completeFlag = false;
+
+    public HotelSearchResponseContainer() {
+
+    }
+
+    public List<HotelSearchResponse> getHotelSearchResponseList() {
+        if (hotelSearchResponseList == null)
+            hotelSearchResponseList = new ArrayList<>();
+        return hotelSearchResponseList;
+    }
+
+    public void setHotelSearchResponseList(List<HotelSearchResponse> hotelSearchResponseList) {
+        this.hotelSearchResponseList = hotelSearchResponseList;
+    }
+
+    public boolean isCompleteFlag() {
+        return completeFlag;
+    }
+
+    public void setCompleteFlag(boolean completeFlag) {
+        this.completeFlag = completeFlag;
+    }
 }

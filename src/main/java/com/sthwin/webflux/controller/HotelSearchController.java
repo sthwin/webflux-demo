@@ -7,13 +7,13 @@ import com.sthwin.webflux.rsocket.HotelSearchResponseContainer;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.stereotype.Controller;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.SynchronousSink;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 /**
  * 캐싱중인 조건에 대한 검색 요청을 받았을 경우 어떻게 할 것인지 ?
@@ -32,54 +32,181 @@ public class HotelSearchController {
 
     static int id = 0;
 
-    Map<String, Object> resContainer = new ConcurrentHashMap<>();
+    Map<String, HotelSearchResponseContainer> resContainer = new ConcurrentHashMap<>();
 
-    @MessageMapping("messages")
+    @MessageMapping("hotelSearchRequest")
     Flux<HotelSearchResponse> search(JsonNode payload) {
         String key = payload.toString();
         System.out.println("key: " + key);
-        if (!resContainer.containsKey(key)) {
-
+        HotelSearchResponseContainer container = resContainer.get(key);
+        if (container == null) {
+            id++;
+            final HotelSearchResponseContainer newContainer = new HotelSearchResponseContainer();
+            resContainer.put(key, newContainer);
+            return Flux.just(whcFlux(id, key), rtsFlux(id, key), eanFlux(id, key))
+                    .flatMap(flux -> {
+                        flux.subscribeOn(Schedulers.boundedElastic());
+                        return flux;
+                    }).doOnComplete(() -> {
+                        // 검색이 완료되었으나 호텔응답이 하나도 없을 경우 컨테이너를 삭제해 버린다.
+                        System.out.println("Flux Complete totally");
+                        if (newContainer.getHotelSearchResponseList().size() == 0)
+                            resContainer.remove(key);
+                        else
+                            newContainer.setCompleteFlag(true);
+                    });
         } else {
-            resContainer.put(key, new HotelSearchResponseContainer());
-        }
-        id++;
-        return Flux.just(whcFlux(id), rtsFlux(id), eanFlux(id))
-                .flatMap(flux -> {
-                    flux.subscribeOn(Schedulers.boundedElastic());
-                    return flux;
-                }).doOnComplete(new Runnable() {
-                    @Override
-                    public void run() {
+            System.out.println("caching");
+            //return Flux.generate(new HotelResponseGenerator(key));
+            return Flux.create(sink -> {
+                String[] providers = {"whc", "rts", "ean"};
 
+                HotelSearchResponseContainer hotelSearchResponseContainer = resContainer.get(key);
+                if (hotelSearchResponseContainer.isCompleteFlag()) {
+                    for (HotelSearchResponse tmp : hotelSearchResponseContainer.getHotelSearchResponseList())
+                        sink.next(tmp);
+                    sink.complete();
+                } else {
+                    List<String> providerList = Arrays.asList(providers);  // 가져와야할 공급사
+                    for (HotelSearchResponse tmp : hotelSearchResponseContainer.getHotelSearchResponseList()) {
+                        providerList.removeIf(providerName -> providerName.equals(tmp.getProviderName()));
+                        sink.next(tmp);
                     }
-                });
+                    Timer timer = new Timer();
+                    // Set the schedule function
+                    timer.scheduleAtFixedRate(new TimerTask() {
+                        int tryCount = 0;
+
+                        @Override
+                        public void run() {
+                            tryCount++;
+                            // resContainer 를 레디스라고 가정했을 때, 다시 가져옴
+                            HotelSearchResponseContainer hotelSearchResponseContainer = resContainer.get(key);
+
+                            List<String> tmpList = new ArrayList<>();
+                            for (HotelSearchResponse tmpRes : hotelSearchResponseContainer.getHotelSearchResponseList()) {
+                                for (String providerName : providers) {
+                                    if (tmpRes.getProviderName().equals(providerName)) {
+                                        sink.next(tmpRes);
+                                        tmpList.add(providerName);
+                                    }
+                                }
+                            }
+
+                            // 가져온 공급사들에 대해서는 삭제
+                            for(String removeProviderName : tmpList) {
+                                providerList.removeIf(providerName -> providerName.equals(removeProviderName));
+                            }
+
+                            // 검색이 완료되었거나 5초가 넘어갈 경우 종료한다.
+                            if (providerList.size() == 0 || hotelSearchResponseContainer.isCompleteFlag() || tryCount > 9) {
+                                sink.complete();
+                            }
+                        }
+                    }, 0, 500);
+                }
+            });
+        }
+
     }
 
-    Flux<HotelSearchResponse> whcFlux(int id) {
+    Flux<HotelSearchResponse> whcFlux(int id, String key) {
         List<HotelInfo> list = new ArrayList<>();
         list.add(HotelInfo.builder().name("whc_a_hotel").price("100").build());
         list.add(HotelInfo.builder().name("whc_b_hotel").price("200").build());
         HotelSearchResponse res = HotelSearchResponse.builder().id(id).providerName("whc").hotelList(list).build();
         return Flux.just(res)
-                .delayElements(Duration.ofSeconds(3));
+                .delayElements(Duration.ofSeconds(10)).doOnComplete(() -> {
+                    HotelSearchResponseContainer container = resContainer.get(key);
+                    container.getHotelSearchResponseList().add(res);
+                    System.out.println("whc Complete");
+                });
     }
 
-    Flux<HotelSearchResponse> rtsFlux(int id) {
+    Flux<HotelSearchResponse> rtsFlux(int id, String key) {
         List<HotelInfo> list = new ArrayList<>();
         list.add(HotelInfo.builder().name("rts_c_hotel").price("300").build());
         list.add(HotelInfo.builder().name("rts_d_hotel").price("400").build());
         HotelSearchResponse res = HotelSearchResponse.builder().id(id).providerName("rts").hotelList(list).build();
+
         return Flux.just(res)
-                .delayElements(Duration.ofSeconds(2));
+                .delayElements(Duration.ofSeconds(2)).doOnComplete(() -> {
+                            HotelSearchResponseContainer container = resContainer.get(key);
+                            container.getHotelSearchResponseList().add(res);
+                            System.out.println("rts Complete");
+                        }
+                );
     }
 
-    Flux<HotelSearchResponse> eanFlux(int id) {
+    Flux<HotelSearchResponse> eanFlux(int id, String key) {
         List<HotelInfo> list = new ArrayList<>();
         list.add(HotelInfo.builder().name("ean_e_hotel").price("500").build());
         list.add(HotelInfo.builder().name("ean_f_hotel").price("600").build());
         HotelSearchResponse res = HotelSearchResponse.builder().id(id).providerName("ean").hotelList(list).build();
-        return Flux.just(res);
+
+        return Flux.just(res).doOnComplete(() -> {
+            HotelSearchResponseContainer container = resContainer.get(key);
+            container.getHotelSearchResponseList().add(res);
+            System.out.println("ean Complete");
+        });
+    }
+
+    class HotelResponseGenerator implements Consumer<SynchronousSink<HotelSearchResponse>> {
+
+        private String key;
+
+        private String[] providers = {"whc", "rts", "ean"};
+
+        public HotelResponseGenerator(String key) {
+            this.key = key;
+        }
+
+        public void accept(SynchronousSink<HotelSearchResponse> tSynchronousSink) {
+            HotelSearchResponseContainer hotelSearchResponseContainer = resContainer.get(key);
+            if (hotelSearchResponseContainer.isCompleteFlag()) {
+                for (HotelSearchResponse tmp : hotelSearchResponseContainer.getHotelSearchResponseList())
+                    tSynchronousSink.next(tmp);
+                tSynchronousSink.complete();
+            } else {
+                List<String> providerList = Arrays.asList(providers);  // 가져와야할 공급사
+                for (HotelSearchResponse tmp : hotelSearchResponseContainer.getHotelSearchResponseList()) {
+                    providerList.removeIf(providerName -> providerName.equals(tmp.getProviderName()));
+                    tSynchronousSink.next(tmp);
+                }
+                Timer timer = new Timer();
+                // Set the schedule function
+                timer.scheduleAtFixedRate(new TimerTask() {
+                    int tryCount = 0;
+
+                    @Override
+                    public void run() {
+                        tryCount++;
+                        // resContainer 를 레디스라고 가정했을 때, 다시 가져옴
+                        HotelSearchResponseContainer hotelSearchResponseContainer = resContainer.get(key);
+
+                        List<String> tmpList = new ArrayList<>();
+                        for (HotelSearchResponse tmpRes : hotelSearchResponseContainer.getHotelSearchResponseList()) {
+                            for (String providerName : providers) {
+                                if (tmpRes.getProviderName().equals(providerName)) {
+                                    tSynchronousSink.next(tmpRes);
+                                    tmpList.add(providerName);
+                                }
+                            }
+                        }
+
+                        // 가져온 공급사들에 대해서는 삭제
+                        for(String removeProviderName : tmpList) {
+                            providerList.removeIf(providerName -> providerName.equals(removeProviderName));
+                        }
+
+                        // 검색이 완료되었거나 5초가 넘어갈 경우 종료한다.
+                        if (providerList.size() == 0 || hotelSearchResponseContainer.isCompleteFlag() || tryCount > 9) {
+                            tSynchronousSink.complete();
+                        }
+                    }
+                }, 0, 500);
+            }
+        }
     }
 
 }
