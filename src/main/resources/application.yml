@@ -2,13 +2,13 @@ server:
   port: 8080
 
 spring:
-  datasource:
-    hikari:
-      maximum-pool-size: 4
-
-    url:
-    username: testuser
-    password: testpwd
+#  datasource:
+#    hikari:
+#      maximum-pool-size: 4
+#
+#    url:
+#    username: testuser
+#    password: testpwd
 
 
   rsocket:

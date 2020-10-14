@@ -14,9 +14,9 @@ import java.util.concurrent.TimeUnit;
  */
 public class KakaoBasketExample {
     public static void main(String[] args) throws Exception {
-        final List<String> basket1 = Arrays.asList(new String[]{"kiwi", "orange", "lemon", "orange", "lemon", "kiwi"});
-        final List<String> basket2 = Arrays.asList(new String[]{"banana", "lemon", "lemon", "kiwi"});
-        final List<String> basket3 = Arrays.asList(new String[]{"strawberry", "orange", "lemon", "grape", "strawberry"});
+        final List<String> basket1 = Arrays.asList("kiwi", "orange", "lemon", "orange", "lemon", "kiwi");
+        final List<String> basket2 = Arrays.asList("banana", "lemon", "lemon", "kiwi");
+        final List<String> basket3 = Arrays.asList("strawberry", "orange", "lemon", "grape", "strawberry");
         final List<List<String>> baskets = Arrays.asList(basket1, basket2, basket3);
         final Flux<List<String>> basketFlux = Flux.fromIterable(baskets);
 

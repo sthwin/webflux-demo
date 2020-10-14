@@ -12,8 +12,7 @@ import java.util.List;
 @Getter
 @Setter
 @Builder
-public
-class HotelSearchResponse {
+public class HotelSearchResponse {
     int id;
     String providerName;
     List<HotelInfo> hotelList;

@@ -13,7 +13,7 @@ import java.util.Map;
  */
 public class DistinctExample {
     public static void main(String[] args) throws Exception {
-        final List<String> basket1 = Arrays.asList(new String[]{"kiwi", "orange", "lemon", "orange", "lemon", "kiwi"});
+        final List<String> basket1 = Arrays.asList("kiwi", "orange", "lemon", "orange", "lemon", "kiwi");
 
         Flux.fromIterable(basket1)
                 .distinct()
