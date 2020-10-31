@@ -1,10 +1,12 @@
 package com.sthwin.webflux.config;
 
+import org.springframework.context.annotation.Configuration;
+
 /**
  * Created by sthwin on 2020/06/06 3:50 오후
  */
 
-//@Configuration
+@Configuration
 //@MapperScan(value = {"com.sthwin.webflux.mapper"})
 //@EnableTransactionManagement
 public class MyBatisConfig {
@@ -25,7 +27,7 @@ public class MyBatisConfig {
 //        sessionFactory.setDataSource(dataSource);
 //
 //        Resource[] res = new PathMatchingResourcePatternResolver()
-//                .getResources("classpath:mappers/*Mapper.xml");
+//                .getResources("classpath:mapper/*Mapper.xml");
 //
 //        sessionFactory.setMapperLocations(res);
 //
