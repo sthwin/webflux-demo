@@ -51,8 +51,16 @@ public class MyBatisConfig {
         return new SqlSessionTemplate(sqlSessionFactory);
     }
 
+
+    /**
+     * SimpleBatchConfiguration.class 클래스에서 transactionManager 로 정의된 이름을 사용하고 있음.
+     * 충돌나지 않도록 이름을 정해야함.
+     *
+     * @param dataSource
+     * @return
+     */
     @Bean
-    public DataSourceTransactionManager transactionManager(DataSource dataSource) {
+    public DataSourceTransactionManager mpisTransactionManager(DataSource dataSource) {
         return new DataSourceTransactionManager(dataSource);
     }
 }

@@ -10,15 +10,15 @@ import org.springframework.stereotype.Component;
  */
 @Slf4j
 @Component
-public class JobCompletionNotificationListener extends JobExecutionListenerSupport {
+public class JobExecutionNotificationListener extends JobExecutionListenerSupport {
 
     @Override
     public void beforeJob(JobExecution jobExecution) {
-        log.info("JobCompletionNotificationListener > beforeJob");
+        log.trace("JobCompletionNotificationListener > beforeJob");
     }
 
     @Override
     public void afterJob(JobExecution jobExecution) {
-        log.info("JobCompletionNotificationListener > afterJob");
+        log.trace("JobCompletionNotificationListener > afterJob");
     }
 }
