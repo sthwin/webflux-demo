@@ -23,18 +23,18 @@ public class StepExecutionNotificationListener extends StepExecutionListenerSupp
     @Override
     public ExitStatus afterStep(StepExecution stepExecution) {
         log.trace("afterStep" + stepExecution.getSummary());
-        stepExecution.getExecutionContext().remove(TARGET_FILE);
-        File target = TargetFileSelector.getTargetFile();
-        if (target == null )  // 처리할 파일이 남아 있을 경우.
-            return ExitStatus.COMPLETED;
-        else
-            return ExitStatus.EXECUTING;
+      //  stepExecution.getExecutionContext().remove(TARGET_FILE);
+//        File target = TargetFileSelector.getTargetFile();
+//        if (target == null )  // 처리할 파일이 남아 있을 경우.
+//            return ExitStatus.COMPLETED;
+//        else
+//            return ExitStatus.EXECUTING;
+        return null;
     }
 
     @Override
     public void beforeStep(StepExecution stepExecution) {
         log.trace("beforeStep");
-        File target = TargetFileSelector.getTargetFile();
-        stepExecution.getExecutionContext().put(TARGET_FILE, target);
+//        File target = TargetFileSelector.getTargetFile();
     }
 }

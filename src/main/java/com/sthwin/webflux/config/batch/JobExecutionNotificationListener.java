@@ -1,6 +1,7 @@
 package com.sthwin.webflux.config.batch;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.listener.JobExecutionListenerSupport;
 import org.springframework.stereotype.Component;
@@ -14,11 +15,12 @@ public class JobExecutionNotificationListener extends JobExecutionListenerSuppor
 
     @Override
     public void beforeJob(JobExecution jobExecution) {
-        log.trace("JobCompletionNotificationListener > beforeJob");
+        System.out.println("JobCompletionNotificationListener > beforeJob > " + jobExecution.getJobId());
     }
 
     @Override
     public void afterJob(JobExecution jobExecution) {
-        log.trace("JobCompletionNotificationListener > afterJob");
+        System.out.println("JobCompletionNotificationListener > afterJob");
+        jobExecution.setExitStatus(ExitStatus.COMPLETED);
     }
 }

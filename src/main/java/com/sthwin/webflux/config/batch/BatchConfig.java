@@ -2,17 +2,17 @@ package com.sthwin.webflux.config.batch;
 
 import com.sthwin.webflux.vo.MPISScheduleVo;
 import lombok.RequiredArgsConstructor;
-import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.launch.support.SimpleJobLauncher;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.repository.support.JobRepositoryFactoryBean;
-import org.springframework.batch.item.ExecutionContext;
+import org.springframework.batch.core.repository.support.SimpleJobRepository;
 import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.repeat.RepeatStatus;
@@ -22,7 +22,8 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 
 import javax.sql.DataSource;
-import java.io.File;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * <code>@EnableBatchProcessing</code>을 사용하면 SimpleBatchConfiguration 클래스가 빈으로 등록되는데
@@ -76,7 +77,7 @@ public class BatchConfig {
      */
     @Bean(name = "mpisScheduleInsertJob")
     public Job createMpisScheduleInsertJob() {
-        return jobBuilderFactory.get("MPISScheduleInsertJob")
+        return jobBuilderFactory.get("MPISScheduleInsertJob-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")))
                 .start(createInsertMpisScheduleStep())
                 .listener(jobExecutionNotificationListener)
                 .build();
@@ -90,7 +91,7 @@ public class BatchConfig {
                 .writer(items -> {
                     System.out.println("deleteMPISScheduleStep > writerForContentBody");
                 })
-                .listener(stepExecutionNotificationListener)
+             //   .listener(stepExecutionNotificationListener)
                 .build();
     }
 
@@ -98,15 +99,19 @@ public class BatchConfig {
     public FlatFileItemReader<MPISScheduleVo> readerForContentBody() {
         return new FlatFileItemReaderBuilder<MPISScheduleVo>()
                 .name("MPISScheduleItemReader")
-                .resource(new FileSystemResource("input/2017-12-04-22-00-02-MMPABC_20171204215956.2.87-0-1/2017-12-04-22-00-02-MMPABC_20171204215956.2.87-0-1.mr"))
+                .resource(new FileSystemResource("input/2017-12-04-22-00-02-MMPABC_20171204215956.2.87-0-1.mr"))
                 .lineMapper((line, lineNumber) -> {
                     String[] str = line.split("^");
+
                     return MPISScheduleVo.builder()
                             .agtCd(str[2])
                             .depCityCd1(str[7])
                             .arrCityCd1(str[10])
                             .build();
                 })
+//                .delimited()
+//                .delimiter("^")
+//                .names("")
 //                .fieldSetMapper(fieldSet -> {
 //                    return MPISScheduleVo.builder()
 //                            .agtCd(fieldSet.readString(2))
@@ -114,6 +119,7 @@ public class BatchConfig {
 //                            .arrCityCd1(fieldSet.readString(10))
 //                            .build();
 //                })
+
                 .build();
     }
 }
