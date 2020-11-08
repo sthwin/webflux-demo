@@ -2,12 +2,19 @@ package com.sthwin.webflux.config.batch;
 
 import com.sthwin.webflux.vo.MpisScheduleVo;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.batch.MyBatisBatchItemWriter;
 import org.mybatis.spring.batch.builder.MyBatisBatchItemWriterBuilder;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.JobRegistry;
 import org.springframework.batch.core.configuration.annotation.*;
+import org.springframework.batch.core.configuration.support.JobRegistryBeanPostProcessor;
+import org.springframework.batch.core.explore.JobExplorer;
+import org.springframework.batch.core.explore.support.JobExplorerFactoryBean;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.launch.support.SimpleJobLauncher;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.repository.support.JobRepositoryFactoryBean;
 import org.springframework.batch.item.file.FlatFileItemReader;
@@ -15,10 +22,10 @@ import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
 import org.springframework.batch.item.file.transform.FieldSet;
 import org.springframework.batch.item.file.transform.LineTokenizer;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 
 import javax.sql.DataSource;
@@ -43,10 +50,13 @@ public class BatchConfig {
 
     private final JobBuilderFactory jobBuilderFactory;
     private final StepBuilderFactory stepBuilderFactory;
+    private final DataSource mpisDataSource;
     private final DataSourceTransactionManager mpisTransactionManager;
     private final SqlSessionFactory mpisSqlSessionFactory;
     private final JobExecutionNotificationListener jobExecutionNotificationListener;
     private final StepExecutionNotificationListener stepExecutionNotificationListener;
+    private final JobRegistry jobRegistry;
+    private final JobRepository jobRepository;
 
     /**
      * 배치의 기본 설정 변경은 아래의 메소드내에서 진행한다.
@@ -61,27 +71,57 @@ public class BatchConfig {
      * JobExplorer getJobExplorer() throws Exception;
      * </pre>
      *
-     * @param dataSource
-     * @param mpisTransactionManager
      * @return
      */
     @Bean
-    public BatchConfigurer configurer(
-            @Qualifier("mpisDataSource") DataSource dataSource,
-            @Qualifier("mpisTransactionManager") DataSourceTransactionManager mpisTransactionManager) {
+    public BatchConfigurer configurer() {
         return new DefaultBatchConfigurer() {
 
             @Override
             protected JobRepository createJobRepository() throws Exception {
                 JobRepositoryFactoryBean factory = new JobRepositoryFactoryBean();
-                factory.setDataSource(dataSource);
+                factory.setDataSource(mpisDataSource);
                 factory.setTransactionManager(mpisTransactionManager);
                 factory.setTablePrefix("bt_mpis_");
                 factory.afterPropertiesSet();
                 return factory.getObject();
             }
+
+            @SneakyThrows
+            @Override
+            public JobExplorer getJobExplorer() {
+                JobExplorerFactoryBean factoryBean = new JobExplorerFactoryBean();
+                factoryBean.setDataSource(mpisDataSource);
+                factoryBean.setTablePrefix("bt_mpis_");
+                factoryBean.afterPropertiesSet();
+                return factoryBean.getObject();
+            }
+
+            @Override
+            protected JobLauncher createJobLauncher() throws Exception {
+                SimpleJobLauncher launcher = new SimpleJobLauncher();
+                launcher.setJobRepository(jobRepository);
+                SimpleAsyncTaskExecutor executor = new SimpleAsyncTaskExecutor();
+                executor.setConcurrencyLimit(10);
+                launcher.setTaskExecutor(executor);
+                launcher.afterPropertiesSet();
+                return launcher;
+            }
         };
     }
+
+    /**
+     * Job 이 빈으로 등록될 경우, jobRegistry 에 job 을 등록 시킨다.
+     *
+     * @return
+     */
+    @Bean
+    public JobRegistryBeanPostProcessor jobRegistryBeanPostProcessor() {
+        JobRegistryBeanPostProcessor postProcessor = new JobRegistryBeanPostProcessor();
+        postProcessor.setJobRegistry(jobRegistry);
+        return postProcessor;
+    }
+
 
     /**
      * 파일을 읽어 들인 후, db 에 저장한다.
