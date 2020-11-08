@@ -1,6 +1,5 @@
 package com.sthwin.webflux.config.batch;
 
-import com.sthwin.webflux.mapper.MpisScheduleMapper;
 import com.sthwin.webflux.vo.MpisScheduleVo;
 import lombok.RequiredArgsConstructor;
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -9,8 +8,6 @@ import org.mybatis.spring.batch.builder.MyBatisBatchItemWriterBuilder;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.*;
-import org.springframework.batch.core.launch.JobLauncher;
-import org.springframework.batch.core.launch.support.SimpleJobLauncher;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.repository.support.JobRepositoryFactoryBean;
 import org.springframework.batch.item.file.FlatFileItemReader;
@@ -19,10 +16,8 @@ import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
 import org.springframework.batch.item.file.transform.FieldSet;
 import org.springframework.batch.item.file.transform.LineTokenizer;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Scope;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 
@@ -53,11 +48,29 @@ public class BatchConfig {
     private final JobExecutionNotificationListener jobExecutionNotificationListener;
     private final StepExecutionNotificationListener stepExecutionNotificationListener;
 
+    /**
+     * 배치의 기본 설정 변경은 아래의 메소드내에서 진행한다.
+     * <p>
+     * 스프링 배치는 기본설정을 BatchConfigurer 인터페이스를 통해 진행한다.
+     * <p>
+     * BatchConfigurer 인터페이스를 통해 변경할 수 있는 기본 설정은 다음과 같다.
+     * <pre>
+     * JobRepository getJobRepository() throws Exception;
+     * PlatformTransactionManager getTransactionManager() throws Exception;
+     * JobLauncher getJobLauncher() throws Exception;
+     * JobExplorer getJobExplorer() throws Exception;
+     * </pre>
+     *
+     * @param dataSource
+     * @param mpisTransactionManager
+     * @return
+     */
     @Bean
     public BatchConfigurer configurer(
             @Qualifier("mpisDataSource") DataSource dataSource,
             @Qualifier("mpisTransactionManager") DataSourceTransactionManager mpisTransactionManager) {
         return new DefaultBatchConfigurer() {
+
             @Override
             protected JobRepository createJobRepository() throws Exception {
                 JobRepositoryFactoryBean factory = new JobRepositoryFactoryBean();
@@ -71,10 +84,7 @@ public class BatchConfig {
     }
 
     /**
-     * 여러 데이터 피드파일들을 읽어 들여, DB 에 저장한다.
-     * <p>
-     * 각 파일별로 읽어 들이기 전에, 파일마다 아이디를 크하여 삭제해야할 데이터가 있는지 확인해서 데이터를 삭제한 다음.
-     * 인서트를 시작한다.
+     * 파일을 읽어 들인 후, db 에 저장한다.
      *
      * @return org.springframework.batch.core.Job
      */
