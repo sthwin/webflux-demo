@@ -1,7 +1,7 @@
 package com.sthwin.webflux.scheduler;
 
+import com.sthwin.webflux.config.batch.BatchConfig;
 import lombok.RequiredArgsConstructor;
-import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobParameter;
 import org.springframework.batch.core.JobParameters;
@@ -24,20 +24,20 @@ import java.util.Map;
 @Component
 public class JobScheduler {
 
-    private final JobLauncher mpisJobLauncher;
-    private final Job mpisScheduleInsertJob;
+    private final JobLauncher jobLauncher;
+    private final BatchConfig batchConfig;
 
     /**
      * initialDelay 를 0으로 설정하여 즉시 실행시킴.
      * run every 1000000 msec (i.e., 매 10)
      */
     //@Scheduled(fixedRate = 1000000)
-    @Scheduled(cron = "* 1 * * * * ")
+    @Scheduled(cron = "1 * * * * * ")
     public void runJob() throws Exception {
         Map<String, JobParameter> param = new HashMap<>();
         param.put("startTime",
                 new JobParameter(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
                         , true));
-        JobExecution execution = mpisJobLauncher.run(mpisScheduleInsertJob, new JobParameters(param));
+        JobExecution execution = jobLauncher.run(batchConfig.createScheduleInsertJob(), new JobParameters(param));
     }
 }

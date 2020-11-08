@@ -2,8 +2,8 @@ package com.sthwin.webflux.config.db;
 
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionFactoryBean;
-import org.mybatis.spring.SqlSessionTemplate;
 import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,7 +24,7 @@ import javax.sql.DataSource;
 public class MyBatisConfig {
 
     @Bean
-    public DataSource dataSource() {
+    public DataSource mpisDataSource() {
         return DataSourceBuilder.create()
                 .url("jdbc:postgresql://127.0.0.1:5432/testdb")
                 .driverClassName("org.postgresql.Driver")
@@ -34,7 +34,7 @@ public class MyBatisConfig {
     }
 
     @Bean
-    public SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception {
+    public SqlSessionFactory mpisSqlSessionFactory(@Qualifier("mpisDataSource") DataSource dataSource) throws Exception {
         SqlSessionFactoryBean sessionFactory = new SqlSessionFactoryBean();
         sessionFactory.setDataSource(dataSource);
 
@@ -46,11 +46,6 @@ public class MyBatisConfig {
         return sessionFactory.getObject();
     }
 
-    @Bean
-    public SqlSessionTemplate sqlSessionTemplate(SqlSessionFactory sqlSessionFactory) {
-        return new SqlSessionTemplate(sqlSessionFactory);
-    }
-
 
     /**
      * SimpleBatchConfiguration.class 클래스에서 transactionManager 로 정의된 이름을 사용하고 있음.
@@ -60,7 +55,7 @@ public class MyBatisConfig {
      * @return
      */
     @Bean
-    public DataSourceTransactionManager mpisTransactionManager(DataSource dataSource) {
+    public DataSourceTransactionManager mpisTransactionManager(@Qualifier("mpisDataSource") DataSource dataSource) {
         return new DataSourceTransactionManager(dataSource);
     }
 }

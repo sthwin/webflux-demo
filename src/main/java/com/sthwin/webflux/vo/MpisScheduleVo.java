@@ -1,19 +1,17 @@
 package com.sthwin.webflux.vo;
 
 import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 import lombok.ToString;
 
 import java.io.Serializable;
 
-@Getter
-@Setter
+@Data
 @Builder
 @ToString
-public class MPISScheduleVo implements Serializable {
+public class MpisScheduleVo implements Serializable {
 
-    private long seqNo;
+    private Integer seq;
     private String queryKey;
     private String agtCd;
     private String depCityCd1;
