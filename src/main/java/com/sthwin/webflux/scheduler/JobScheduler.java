@@ -35,6 +35,8 @@ public class JobScheduler {
     /**
      * initialDelay 를 0으로 설정하여 즉시 실행시킴.
      * run every 1000000 msec (i.e., 매 10)
+     *
+     * jobLauncher.run 은 비동기로 실행 됨.
      */
     @Scheduled(initialDelay = 0, fixedRate = 50000)
     //@Scheduled(cron = "1 * * * * * ")
@@ -42,7 +44,7 @@ public class JobScheduler {
         // 레지스트리에 Job 이 남아 있으면 종료되지 않은 것으로 보고 시작시키지 않는다.
         for(String name : jobRegistry.getJobNames()) {
             if(name.startsWith("MPISScheduleInsertJob-")) {
-                System.out.println(name + "이 이미 실행 중 입니다.");
+                System.out.println(name + " 이 이미 실행 중 입니다.");
                 return;
             }
         }
