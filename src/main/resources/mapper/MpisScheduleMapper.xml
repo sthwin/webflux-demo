@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sthwin.webflux.mapper.MpisScheduleMapper">
+  <resultMap id="BaseResultMap" type="com.sthwin.webflux.vo.MpisScheduleVo">
+    <id column="seq" jdbcType="INTEGER" property="seq" />
+    <result column="query_key" jdbcType="VARCHAR" property="queryKey" />
+    <result column="agt_cd" jdbcType="VARCHAR" property="agtCd" />
+    <result column="dep_city_cd1" jdbcType="VARCHAR" property="depCityCd1" />
+    <result column="arr_city_cd1" jdbcType="VARCHAR" property="arrCityCd1" />
+    <result column="dep_date1" jdbcType="VARCHAR" property="depDate1" />
+    <result column="dep_city_cd2" jdbcType="VARCHAR" property="depCityCd2" />
+    <result column="arr_city_cd2" jdbcType="VARCHAR" property="arrCityCd2" />
+    <result column="dep_date2" jdbcType="VARCHAR" property="depDate2" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    seq, query_key, agt_cd, dep_city_cd1, arr_city_cd1, dep_date1, dep_city_cd2, arr_city_cd2, 
+    dep_date2
+  </sql>
+  <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from "mpis_schedule"
+    where seq = #{seq,jdbcType=INTEGER}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
+    delete from "mpis_schedule"
+    where seq = #{seq,jdbcType=INTEGER}
+  </delete>
+  <insert id="insert" keyColumn="seq" keyProperty="seq" parameterType="com.sthwin.webflux.vo.MpisScheduleVo" useGeneratedKeys="true">
+    insert into "mpis_schedule" (query_key, agt_cd, dep_city_cd1, 
+      arr_city_cd1, dep_date1, dep_city_cd2, 
+      arr_city_cd2, dep_date2)
+    values (#{queryKey,jdbcType=VARCHAR}, #{agtCd,jdbcType=VARCHAR}, #{depCityCd1,jdbcType=VARCHAR}, 
+      #{arrCityCd1,jdbcType=VARCHAR}, #{depDate1,jdbcType=VARCHAR}, #{depCityCd2,jdbcType=VARCHAR}, 
+      #{arrCityCd2,jdbcType=VARCHAR}, #{depDate2,jdbcType=VARCHAR})
+  </insert>
+  <insert id="insertSelective" keyColumn="seq" keyProperty="seq" parameterType="com.sthwin.webflux.vo.MpisScheduleVo" useGeneratedKeys="true">
+    insert into "mpis_schedule"
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="queryKey != null">
+        query_key,
+      </if>
+      <if test="agtCd != null">
+        agt_cd,
+      </if>
+      <if test="depCityCd1 != null">
+        dep_city_cd1,
+      </if>
+      <if test="arrCityCd1 != null">
+        arr_city_cd1,
+      </if>
+      <if test="depDate1 != null">
+        dep_date1,
+      </if>
+      <if test="depCityCd2 != null">
+        dep_city_cd2,
+      </if>
+      <if test="arrCityCd2 != null">
+        arr_city_cd2,
+      </if>
+      <if test="depDate2 != null">
+        dep_date2,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="queryKey != null">
+        #{queryKey,jdbcType=VARCHAR},
+      </if>
+      <if test="agtCd != null">
+        #{agtCd,jdbcType=VARCHAR},
+      </if>
+      <if test="depCityCd1 != null">
+        #{depCityCd1,jdbcType=VARCHAR},
+      </if>
+      <if test="arrCityCd1 != null">
+        #{arrCityCd1,jdbcType=VARCHAR},
+      </if>
+      <if test="depDate1 != null">
+        #{depDate1,jdbcType=VARCHAR},
+      </if>
+      <if test="depCityCd2 != null">
+        #{depCityCd2,jdbcType=VARCHAR},
+      </if>
+      <if test="arrCityCd2 != null">
+        #{arrCityCd2,jdbcType=VARCHAR},
+      </if>
+      <if test="depDate2 != null">
+        #{depDate2,jdbcType=VARCHAR},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.sthwin.webflux.vo.MpisScheduleVo">
+    update "mpis_schedule"
+    <set>
+      <if test="queryKey != null">
+        query_key = #{queryKey,jdbcType=VARCHAR},
+      </if>
+      <if test="agtCd != null">
+        agt_cd = #{agtCd,jdbcType=VARCHAR},
+      </if>
+      <if test="depCityCd1 != null">
+        dep_city_cd1 = #{depCityCd1,jdbcType=VARCHAR},
+      </if>
+      <if test="arrCityCd1 != null">
+        arr_city_cd1 = #{arrCityCd1,jdbcType=VARCHAR},
+      </if>
+      <if test="depDate1 != null">
+        dep_date1 = #{depDate1,jdbcType=VARCHAR},
+      </if>
+      <if test="depCityCd2 != null">
+        dep_city_cd2 = #{depCityCd2,jdbcType=VARCHAR},
+      </if>
+      <if test="arrCityCd2 != null">
+        arr_city_cd2 = #{arrCityCd2,jdbcType=VARCHAR},
+      </if>
+      <if test="depDate2 != null">
+        dep_date2 = #{depDate2,jdbcType=VARCHAR},
+      </if>
+    </set>
+    where seq = #{seq,jdbcType=INTEGER}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.sthwin.webflux.vo.MpisScheduleVo">
+    update "mpis_schedule"
+    set query_key = #{queryKey,jdbcType=VARCHAR},
+      agt_cd = #{agtCd,jdbcType=VARCHAR},
+      dep_city_cd1 = #{depCityCd1,jdbcType=VARCHAR},
+      arr_city_cd1 = #{arrCityCd1,jdbcType=VARCHAR},
+      dep_date1 = #{depDate1,jdbcType=VARCHAR},
+      dep_city_cd2 = #{depCityCd2,jdbcType=VARCHAR},
+      arr_city_cd2 = #{arrCityCd2,jdbcType=VARCHAR},
+      dep_date2 = #{depDate2,jdbcType=VARCHAR}
+    where seq = #{seq,jdbcType=INTEGER}
+  </update>
+</mapper>
