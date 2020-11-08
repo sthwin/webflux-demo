@@ -14,7 +14,9 @@ import org.springframework.batch.core.configuration.support.JobRegistryBeanPostP
 import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.explore.support.JobExplorerFactoryBean;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.launch.support.SimpleJobLauncher;
+import org.springframework.batch.core.launch.support.SimpleJobOperator;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.repository.support.JobRepositoryFactoryBean;
 import org.springframework.batch.item.file.FlatFileItemReader;
@@ -122,6 +124,22 @@ public class BatchConfig {
         return postProcessor;
     }
 
+    @Bean
+    public SimpleJobOperator jobOperator(JobExplorer jobExplorer,
+                                         JobRepository jobRepository,
+                                         JobRegistry jobRegistry,
+                                         JobLauncher jobLauncher) {
+
+        SimpleJobOperator jobOperator = new SimpleJobOperator();
+
+        jobOperator.setJobExplorer(jobExplorer);
+        jobOperator.setJobRepository(jobRepository);
+        jobOperator.setJobRegistry(jobRegistry);
+        jobOperator.setJobLauncher(jobLauncher);
+
+        return jobOperator;
+    }
+
 
     /**
      * 파일을 읽어 들인 후, db 에 저장한다.
@@ -132,6 +150,7 @@ public class BatchConfig {
         return jobBuilderFactory.get("MPISScheduleInsertJob-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")))
                 .start(createInsertMpisScheduleStep())
                 .listener(jobExecutionNotificationListener)
+                .incrementer(new RunIdIncrementer())
                 .build();
     }
 
