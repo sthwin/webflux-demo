@@ -1,13 +1,13 @@
 package com.sthwin.webflux.config.batch;
 
-import com.sthwin.webflux.vo.MpisScheduleVo;
-import lombok.RequiredArgsConstructor;
+import com.sthwin.webflux.mapper.MpisDataFeeMapper;
+import com.sthwin.webflux.vo.MpisDataFeed;
 import lombok.SneakyThrows;
-import org.apache.ibatis.session.SqlSessionFactory;
-import org.mybatis.spring.batch.MyBatisBatchItemWriter;
-import org.mybatis.spring.batch.builder.MyBatisBatchItemWriterBuilder;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.configuration.JobRegistry;
 import org.springframework.batch.core.configuration.annotation.*;
 import org.springframework.batch.core.configuration.support.JobRegistryBeanPostProcessor;
@@ -17,22 +17,27 @@ import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.launch.support.SimpleJobLauncher;
 import org.springframework.batch.core.launch.support.SimpleJobOperator;
+import org.springframework.batch.core.listener.JobExecutionListenerSupport;
+import org.springframework.batch.core.listener.StepExecutionListenerSupport;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.repository.support.JobRepositoryFactoryBean;
-import org.springframework.batch.item.file.FlatFileItemReader;
-import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
-import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
-import org.springframework.batch.item.file.transform.FieldSet;
-import org.springframework.batch.item.file.transform.LineTokenizer;
+import org.springframework.batch.repeat.RepeatStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 
 import javax.sql.DataSource;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * <code>@EnableBatchProcessing</code>을 사용하면 SimpleBatchConfiguration 클래스가 빈으로 등록되는데
@@ -44,21 +49,25 @@ import java.time.format.DateTimeFormatter;
  * Created by sthwin on 2020/10/31 5:42 오후
  */
 
-
+@Slf4j
 @Configuration
 @EnableBatchProcessing
-@RequiredArgsConstructor
 public class BatchConfig {
 
-    private final JobBuilderFactory jobBuilderFactory;
-    private final StepBuilderFactory stepBuilderFactory;
-    private final DataSource mpisDataSource;
-    private final DataSourceTransactionManager mpisTransactionManager;
-    private final SqlSessionFactory mpisSqlSessionFactory;
-    private final JobExecutionNotificationListener jobExecutionNotificationListener;
-    private final StepExecutionNotificationListener stepExecutionNotificationListener;
-    private final JobRegistry jobRegistry;
-    private final JobRepository jobRepository;
+    @Autowired
+    private JobBuilderFactory jobBuilderFactory;
+    @Autowired
+    private StepBuilderFactory stepBuilderFactory;
+    @Autowired
+    private DataSource mpisDataSource;
+    @Autowired
+    private DataSourceTransactionManager mpisTransactionManager;
+    @Autowired
+    private JobRegistry jobRegistry;
+    @Autowired
+    private JobRepository jobRepository;
+    @Autowired
+    private MpisDataFeeMapper mpisDataFeeMapper;
 
     /**
      * 배치의 기본 설정 변경은 아래의 메소드내에서 진행한다.
@@ -77,11 +86,12 @@ public class BatchConfig {
      */
     @Bean
     public BatchConfigurer configurer() {
-        return new DefaultBatchConfigurer() {
+        return new DefaultBatchConfigurer(mpisDataSource) {
 
             @Override
             protected JobRepository createJobRepository() throws Exception {
                 JobRepositoryFactoryBean factory = new JobRepositoryFactoryBean();
+                factory.setIsolationLevelForCreate("ISOLATION_READ_COMMITTED");
                 factory.setDataSource(mpisDataSource);
                 factory.setTransactionManager(mpisTransactionManager);
                 factory.setTablePrefix("bt_mpis_");
@@ -132,62 +142,58 @@ public class BatchConfig {
                                          JobLauncher jobLauncher) {
 
         SimpleJobOperator jobOperator = new SimpleJobOperator();
-
         jobOperator.setJobExplorer(jobExplorer);
         jobOperator.setJobRepository(jobRepository);
         jobOperator.setJobRegistry(jobRegistry);
         jobOperator.setJobLauncher(jobLauncher);
-
         return jobOperator;
     }
 
-
-    /**
-     * 파일을 읽어 들인 후, db 에 저장한다.
-     *
-     * @return org.springframework.batch.core.Job
-     */
-    public Job createScheduleInsertJob() {
-        return jobBuilderFactory.get("MPISScheduleInsertJob-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")))
-                .start(createInsertMpisScheduleStep())
-                .listener(jobExecutionNotificationListener)
-                .incrementer(new RunIdIncrementer())
-                .build();
-    }
-
-    public Step createInsertMpisScheduleStep() {
-        return stepBuilderFactory.get("insertMPISScheduleStep")
-                .<MpisScheduleVo, MpisScheduleVo>chunk(100)
-                .reader(reader())
-                .writer(writer())
-                .faultTolerant()
-                .skipLimit(10)
-                .transactionManager(mpisTransactionManager)
-                .listener(stepExecutionNotificationListener)
-                .build();
-    }
-
-    public MyBatisBatchItemWriter<MpisScheduleVo> writer() {
-        return new MyBatisBatchItemWriterBuilder()
-                .sqlSessionFactory(mpisSqlSessionFactory)
-                .statementId("com.sthwin.webflux.mapper.MpisScheduleMapper.insert")
-                .build();
-    }
-
-    public FlatFileItemReader<MpisScheduleVo> reader() {
-        return new FlatFileItemReaderBuilder<MpisScheduleVo>()
-                .name("MPISScheduleItemReader")
-                .resource(new FileSystemResource("input/2017-12-04-22-00-02-MMPABC_20171204215956.2.87-0-1.mr"))
-                .lineMapper((line, lineNumber) -> {
-                    LineTokenizer tokenizer = new DelimitedLineTokenizer("^");
-                    FieldSet fieldSet = tokenizer.tokenize(line);
-
-                    return MpisScheduleVo.builder()
-                            .agtCd(fieldSet.readString(2))
-                            .depCityCd1(fieldSet.readString(7))
-                            .arrCityCd1(fieldSet.readString(10))
-                            .build();
+    @Bean
+    public Job testJob() throws IOException {
+        return jobBuilderFactory.get("testJob")
+               // .incrementer(new RunIdIncrementer())
+                .preventRestart()
+                .listener(new JobExecutionListenerSupport() {
+                    @Override
+                    public void beforeJob(JobExecution jobExecution) {
+                        Queue<String> list = new ConcurrentLinkedQueue<>();
+                        try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get("input"))) {
+                            for (Path path : stream) {
+                                if (!Files.isDirectory(path)) {
+                                    list.add(path.getFileName().toString());
+                                }
+                            }
+                            jobExecution.getExecutionContext().put("LIST", list);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
                 })
+                .start(testStep()).build();
+    }
+
+    public Step testStep() throws IOException {
+        return stepBuilderFactory.get("test")
+                .tasklet((contribution, chunkContext) -> {
+                    Queue<String>  list = (Queue<String>)  contribution.getStepExecution().getJobExecution().getExecutionContext().get("LIST");
+                    if (list == null || list.isEmpty())
+                        return RepeatStatus.FINISHED;
+
+                    String filename = list.poll();
+                    //list.remove(0);
+                    MpisDataFeed vo = new MpisDataFeed();
+                    vo.setFileName(filename);
+                    mpisDataFeeMapper.insert(vo);
+                    return RepeatStatus.CONTINUABLE;
+                })
+                .listener(new StepExecutionListenerSupport() {
+                    @Override
+                    public void beforeStep(StepExecution stepExecution) {
+                    }
+                })
+                .startLimit(1)
+               // .transactionManager(mpisTransactionManager)
                 .build();
     }
 }

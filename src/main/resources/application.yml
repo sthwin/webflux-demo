@@ -4,7 +4,7 @@ server:
 spring:
   datasource:
     hikari:
-      maximum-pool-size: 4
+      maximum-pool-size: 50
 
     url:
     username: testuser
@@ -16,3 +16,7 @@ spring:
       port: 7000
       transport: websocket
       mapping-path: /rsocket
+
+  batch:
+    job:
+      enabled: false
