@@ -34,8 +34,6 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -136,14 +134,14 @@ public class BatchConfig {
 
 
     @Bean
-    public SimpleJobOperator jobOperator(JobExplorer jobExplorer,
-                                         JobRepository jobRepository,
-                                         JobRegistry jobRegistry,
-                                         JobLauncher jobLauncher) {
+    public SimpleJobOperator jobOperator(
+            JobRegistry jobRegistry,
+            JobLauncher jobLauncher) throws Exception {
 
+        BatchConfigurer configurer = configurer();
         SimpleJobOperator jobOperator = new SimpleJobOperator();
-        jobOperator.setJobExplorer(jobExplorer);
-        jobOperator.setJobRepository(jobRepository);
+        jobOperator.setJobExplorer(configurer.getJobExplorer());
+        jobOperator.setJobRepository(configurer.getJobRepository());
         jobOperator.setJobRegistry(jobRegistry);
         jobOperator.setJobLauncher(jobLauncher);
         return jobOperator;
@@ -152,7 +150,7 @@ public class BatchConfig {
     @Bean
     public Job testJob() throws IOException {
         return jobBuilderFactory.get("testJob")
-               // .incrementer(new RunIdIncrementer())
+                .incrementer(new RunIdIncrementer())
                 .preventRestart()
                 .listener(new JobExecutionListenerSupport() {
                     @Override
@@ -169,22 +167,29 @@ public class BatchConfig {
                             e.printStackTrace();
                         }
                     }
+
+                    @Override
+                    public void afterJob(JobExecution jobExecution) {
+                        log.info("testJob이 종료됨.");
+                        super.afterJob(jobExecution);
+                    }
                 })
                 .start(testStep()).build();
     }
 
+    @Bean
     public Step testStep() throws IOException {
         return stepBuilderFactory.get("test")
                 .tasklet((contribution, chunkContext) -> {
-                    Queue<String>  list = (Queue<String>)  contribution.getStepExecution().getJobExecution().getExecutionContext().get("LIST");
+                    Queue<String> list = (Queue<String>) contribution.getStepExecution().getJobExecution().getExecutionContext().get("LIST");
                     if (list == null || list.isEmpty())
                         return RepeatStatus.FINISHED;
 
                     String filename = list.poll();
-                    //list.remove(0);
                     MpisDataFeed vo = new MpisDataFeed();
                     vo.setFileName(filename);
                     mpisDataFeeMapper.insert(vo);
+                    Thread.sleep(5000);
                     return RepeatStatus.CONTINUABLE;
                 })
                 .listener(new StepExecutionListenerSupport() {
@@ -193,7 +198,9 @@ public class BatchConfig {
                     }
                 })
                 .startLimit(1)
-               // .transactionManager(mpisTransactionManager)
+                // .transactionManager(mpisTransactionManager)
                 .build();
     }
+
+
 }
