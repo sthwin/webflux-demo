@@ -124,6 +124,7 @@ public class BatchConfig {
         return postProcessor;
     }
 
+
     @Bean
     public SimpleJobOperator jobOperator(JobExplorer jobExplorer,
                                          JobRepository jobRepository,
@@ -159,6 +160,8 @@ public class BatchConfig {
                 .<MpisScheduleVo, MpisScheduleVo>chunk(100)
                 .reader(reader())
                 .writer(writer())
+                .faultTolerant()
+                .skipLimit(10)
                 .transactionManager(mpisTransactionManager)
                 .listener(stepExecutionNotificationListener)
                 .build();
